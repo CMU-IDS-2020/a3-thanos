@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import altair as alt
 
-st.title("Let's analyze some Penguin Data hahahha 🐧📊.")
+st.title("Let's analyze some Penguin Data hahahha ：） 🐧📊.")
 
 @st.cache  # add caching so we load the data only once
 def load_data():
@@ -14,7 +14,17 @@ df = load_data()
 
 st.write("Let's look at raw data in the Pandas Data Frame.")
 
-st.write(df)
+if st.checkbox("show raw data"):
+    st.write(df)
+
+#selections
+# picked = alt.selection_single(on="mouseover")
+picked = alt.selection_single(fields=["Species","Island"])
+picked_multi = alt.selection_multi()
+picked_interval = alt.selection_interval(encodings=["x"])
+
+input_dropdown = alt.binding_select(options = ["Adelie","Chinstrap","Gentoo"],name = "Species of ")
+picked_bind = alt.selection_single(encodings = ["color"], bind = input_dropdown)
 
 st.write("Hmm 🤔, is there some correlation between body mass and flipper length? Let's make a scatterplot with [Altair](https://altair-viz.github.io/) to find.")
 
@@ -24,6 +34,18 @@ chart = alt.Chart(df).mark_point().encode(
     color=alt.Y("species")
 ).properties(
     width=600, height=400
-).interactive()
+)\
+    # .interactive()
 
-st.write(chart)
+st.write(chart.encode(color = alt.condition(picked_bind,"species:N",alt.value("lightgray")))
+         .add_selection(picked_bind))
+
+
+brush = alt.selection_interval(encodings=["x"])
+st.write(chart.add_selection(brush) & chart.encode(color = alt.condition(brush,"species:N",alt.value("lightgray"))).transform_filter(brush))
+
+st.write(chart.add_selection(brush) & alt.Chart(df).mark_bar().encode(
+    alt.X("body_mass_g",bin =True)
+    ,alt.Y("count()")
+    ,alt.Color("species")
+).transform_filter(brush))
