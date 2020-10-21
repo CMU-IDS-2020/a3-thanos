@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import altair as alt
 from vega_datasets import data
-import geopandas as gpd
+# import geopandas as gpd
 import json
 
 st.title("Let's analyze some CO2 emission data :)")
@@ -129,12 +129,13 @@ st.write(all)
 st.header("Try to compare the countries you're interested!")
 dataset = st.multiselect("Choose countries you want to explore!", ["China","United States","United Kingdom","India","Russian Federation","Australia","Qatar"], ["China","United States"])
 
-df = df[df["Country Name"].isin(dataset)]
-df = df[df['Year'] <2011]
-df = df[df['Year'] >1990]
-df = df[df['CO2 emissions (kt)'] >0]
+df1 = df
+df1 = df1[df1["Country Name"].isin(dataset)]
+df1 = df1[df1['Year'] <2011]
+df1 = df1[df1['Year'] >1990]
+df1 = df1[df1['CO2 emissions (kt)'] >0]
 
-line = alt.Chart(df).mark_trail().encode(
+line = alt.Chart(df1).mark_trail().encode(
     x=alt.X('Year'),
     y=alt.Y('CO2 emissions (kt)'),
     color = alt.Color('Country Name:N',scale=alt.Scale(domain=dataset,type='ordinal'))
@@ -146,7 +147,7 @@ line = alt.Chart(df).mark_trail().encode(
     title='Country Name'
 )
 
-labels = alt.Chart(df).mark_text(align='left', dx=3).encode(
+labels = alt.Chart(df1).mark_text(align='left', dx=3).encode(
     alt.X('Year', aggregate='max'),
     alt.Y('CO2 emissions (kt)', aggregate={'argmax': 'Year'}),
     alt.Text('Country Name'),
@@ -155,3 +156,41 @@ labels = alt.Chart(df).mark_text(align='left', dx=3).encode(
 
 
 st.write(line+labels)
+
+# brush = alt.selection_interval
+# st.write
+
+# bar chart
+
+
+st.header("Explore different types of CO2 emission")
+dataset2 = st.multiselect("Choose countries you want to explore!", ["China","United States","United Kingdom","India","Russian Federation","Australia","Qatar"], ["China","United States"], key="bar")
+# tfilter = st.slider("Year", 1990, 2011, 1990)
+
+slider2 = alt.binding_range(min=1990, max=2011, step=1)
+select_year2 = alt.selection_single(name = "Year",fields=['Year'],
+                                   bind=slider, init={'Year': 1990})
+
+df2 = df[["Country Name", "Year", "CO2 emissions (kt)", "CO2 emissions from gaseous fuel consumption (kt)", "CO2 emissions from liquid fuel consumption (kt)", "CO2 emissions from solid fuel consumption (kt)"]]
+df2 = df2.rename(columns={"CO2 emissions from gaseous fuel consumption (kt)": "gaseous fuel", "CO2 emissions from liquid fuel consumption (kt)": "liquid fuel", "CO2 emissions from solid fuel consumption (kt)": "solid fuel"})
+
+df2 = df2[df2["Country Name"].isin(dataset2)]
+df2 = df2[df2['Year'] <= 2011]
+df2 = df2[df2['Year'] >= 1990]
+df2 = df2[df2['CO2 emissions (kt)'] >0]
+
+df2 = df2.melt(id_vars=["Country Name", "Year"],
+               value_vars=["solid fuel", "liquid fuel", "gaseous fuel"],
+               var_name="type",
+               value_name="CO2 emissions (kt)")
+
+
+bar = alt.Chart(df2).mark_bar().encode(
+    # alt.Column('Year'),
+    alt.X("CO2 emissions (kt)"),
+    alt.Y('Country Name'),
+    alt.Color('type'),
+).properties(width=800).add_selection(select_year2)\
+    .transform_filter(select_year2)
+
+st.write(bar)
