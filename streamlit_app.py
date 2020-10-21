@@ -79,10 +79,12 @@ slider = alt.binding_range(min=1990, max=2011, step=1)
 select_year = alt.selection_single(name = "Year",fields=['Year'],
                                    bind=slider, init={'Year': 1990})
 
+highlight = alt.selection_single(on='mouseover', fields=['id'], empty='none')
+
 c = alt.Chart(df).mark_geoshape(
     stroke='#aaa', strokeWidth=0.25
 ).encode(
-    color=alt.Color('CO2 emissions (kt):Q',title = "total CO2 emissions"),
+    color=alt.condition(highlight, alt.value('black'), 'CO2 emissions (kt):Q'), #alt.Color('CO2 emissions (kt):Q',title = "total CO2 emissions"),
     tooltip = ["Country Name", "CO2 emissions (kt)", "CO2 emissions (metric tons per capita)"]
 ).transform_lookup(
     lookup='Country Name',
@@ -96,10 +98,12 @@ c = alt.Chart(df).mark_geoshape(
     width=900,
     height=500,
     title='Country Name'
-)
+).add_selection(highlight)
 
-percapita = alt.Chart(df).mark_circle().encode(
-    size=alt.Size('CO2 emissions (metric tons per capita):Q', title='CO2 emissions per capita'),
+percapita = alt.Chart(df).mark_circle(
+    opacity=0.35,
+).encode(
+    size=alt.Size('CO2 emissions (metric tons per capita):Q', title='CO2 emissions per capita', scale=alt.Scale(range=[0, 1000])),
     color = alt.value("red"),
     longitude='Longitude (average):Q',
     latitude='Latitude (average):Q'
@@ -146,7 +150,7 @@ line = alt.Chart(df1).mark_trail().encode(
 ).properties(
     width=900,
     height=500,
-    title='Country Name'
+    title='CO2 total emission and emission per capita overtime'
 )
 
 labels = alt.Chart(df1).mark_text(align='left', dx=3).encode(
@@ -163,23 +167,22 @@ st.write(line+labels)
 # bar chart
 
 
-st.header("Explore different types of CO2 emission")
-dataset2 = st.multiselect("Choose countries you want to explore!", country_map_df["name"].to_list(), ["China","United States","United Kingdom","India","Russian Federation","Australia","Qatar"], key="bar")
+# dataset2 = st.multiselect("Choose countries you want to explore!", country_map_df["name"].to_list(), ["China","United States","United Kingdom","India","Russian Federation","Australia","Qatar"], key="bar")
 # tfilter = st.slider("Year", 1990, 2011, 1990)
 
 slider2 = alt.binding_range(min=1990, max=2011, step=1)
 select_year2 = alt.selection_single(name = "Year",fields=['Year'],
                                    bind=slider, init={'Year': 1990})
 
-df2 = df[["Country Name", "Year", "CO2 emissions (kt)", "CO2 emissions from gaseous fuel consumption (kt)", "CO2 emissions from liquid fuel consumption (kt)", "CO2 emissions from solid fuel consumption (kt)"]]
+df2 = df #[["Country Name", "Year", "CO2 emissions (kt)", "CO2 emissions from gaseous fuel consumption (kt)", "CO2 emissions from liquid fuel consumption (kt)", "CO2 emissions from solid fuel consumption (kt)"]]
 df2 = df2.rename(columns={"CO2 emissions from gaseous fuel consumption (kt)": "gaseous fuel", "CO2 emissions from liquid fuel consumption (kt)": "liquid fuel", "CO2 emissions from solid fuel consumption (kt)": "solid fuel"})
 
-df2 = df2[df2["Country Name"].isin(dataset2)]
+df2 = df2[df2["Country Name"].isin(dataset)]
 df2 = df2[df2['Year'] <= 2011]
 df2 = df2[df2['Year'] >= 1990]
 df2 = df2[df2['CO2 emissions (kt)'] >0]
 
-df2 = df2.melt(id_vars=["Country Name", "Year", "CO2 emissions (kt)"],
+df2 = df2.melt(id_vars=["Country Name", "Year", "CO2 emissions (kt)", "CO2 emissions (metric tons per capita)"],
                value_vars=["solid fuel", "liquid fuel", "gaseous fuel"],
                var_name="type",
                value_name="CO2 emissions from different consumptions (kt)")
@@ -190,29 +193,73 @@ df2 = df2.melt(id_vars=["Country Name", "Year", "CO2 emissions (kt)"],
 #     color="source:N",
 # )
 
-picked = alt.selection_single(on="mouseover")
+picked = alt.selection_single(on="mouseover", encodings=["x", "y"])
+picked_interval = alt.selection_interval(encodings=["x"])
 
-circle = alt.Chart(df2).mark_circle().encode(
+# rect = alt.Chart(df2).mark_rect(
+# ).encode(
+#     # alt.Color(scale=alt.Scale(scheme="viridis"), condition=alt.condition(picked_interval,"CO2 emissions (kt):Q",alt.value("lightgray"))),
+#     x='Year:O',
+#     y='Country Name:O',
+#     # size='CO2 emissions (kt):Q',
+#     color=alt.condition(picked_interval,"CO2 emissions (kt):Q",alt.value("lightgray")),
+#     tooltip=['Country Name', "Year", 'CO2 emissions (metric tons per capita)', 'CO2 emissions (kt):Q']
+# ).properties(
+#     width=700,
+#     height=400,
+# )
+
+
+# circle = rect.mark_circle(
+#     opacity=0.5,
+#     stroke='black',
+#     strokeWidth=1
+# ).encode(
+#
+#     alt.ColorValue('grey'),
+#     alt.Size('CO2 emissions (metric tons per capita):Q'),
+#     # color='CO2 emissions (metric tons per capita):Q',
+#     # tooltip=['Country Name', "Year", 'CO2 emissions (metric tons per capita)', 'CO2 emissions (kt):Q']
+# )
+#
+# bar = alt.Chart(df2).mark_bar().encode(
+#     # alt.Column('Year'),
+#     alt.Y("CO2 emissions from different consumptions (kt)"),
+#     alt.X('Country Name'),
+#     alt.Color('type'),
+# ).properties(
+#     width=700,
+#     height=400,
+# ).transform_filter(picked_interval)
+
+
+st.header('Try select range and explore CO2 emission from different types of consumption!')
+circle = alt.Chart(df2).mark_circle(
+    opacity=0.5,
+    stroke='black',
+    strokeWidth=1
+).encode(
+    alt.Size('CO2 emissions (kt):Q', scale=alt.Scale(range=[50, 2000])),
+    alt.Color('CO2 emissions (metric tons per capita):Q'),
     x='Year:O',
     y='Country Name:O',
-    size='CO2 emissions (kt):Q',
-    color='CO2 emissions (kt):Q',
+    tooltip=['Country Name', "Year", 'CO2 emissions (metric tons per capita)', 'CO2 emissions (kt):Q']
 ).properties(
     width=700,
-    height=300,
+    height=400,
+    title='CO2 total emission and emission per capita overtime'
 )
 
-picked_interval = alt.selection_interval(encodings=["x"])
-st.write(circle.encode(color = alt.condition(picked,"CO2 emissions (kt):Q",alt.value("lightgray")))
-         .add_selection(picked) & alt.Chart(df2).mark_bar().encode(
+st.write(circle.encode(color = alt.condition(picked_interval,"CO2 emissions (metric tons per capita):Q",alt.value("lightgray")))
+         .add_selection(picked_interval) & alt.Chart(df2).mark_bar().encode(
     # alt.Column('Year'),
     alt.X("CO2 emissions from different consumptions (kt)"),
     alt.Y('Country Name'),
     alt.Color('type'),
 ).properties(
     width=700,
-    height=300,
-))
+    height=200,
+).transform_filter(picked_interval))
 
 
 # picked = alt.selection_single(fields=["Species","Island"])
@@ -220,15 +267,15 @@ st.write(circle.encode(color = alt.condition(picked,"CO2 emissions (kt):Q",alt.v
 # picked_interval = alt.selection_interval(encodings=["x"])
 # st.write(circle)
 
-bar = alt.Chart(df2).mark_bar().encode(
-    # alt.Column('Year'),
-    alt.X("CO2 emissions from different consumptions (kt)"),
-    alt.Y('Country Name'),
-    alt.Color('type'),
-).properties(
-    width=700,
-    height=300,
-).add_selection(select_year2)\
-    .transform_filter(select_year2)
-
-st.write(bar)
+# bar = alt.Chart(df2).mark_bar().encode(
+#     # alt.Column('Year'),
+#     alt.X("CO2 emissions from different consumptions (kt)"),
+#     alt.Y('Country Name'),
+#     alt.Color('type'),
+# ).properties(
+#     width=700,
+#     height=300,
+# ).add_selection(select_year2)\
+#     .transform_filter(select_year2)
+#
+# st.write(bar)
