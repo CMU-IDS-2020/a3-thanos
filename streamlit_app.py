@@ -24,6 +24,8 @@ def load_data():
     return climate
 df = load_data()
 
+country_map_df = pd.read_table("https://raw.githubusercontent.com/KoGor/Map-Icons-Generator/master/data/world-110m-country-names.tsv")
+
 countries = alt.topo_feature(data.world_110m.url, 'countries')
 
 if st.checkbox("Show Raw Data"):
@@ -127,7 +129,7 @@ st.write(all)
 
 
 st.header("Try to compare the countries you're interested!")
-dataset = st.multiselect("Choose countries you want to explore!", ["China","United States","United Kingdom","India","Russian Federation","Australia","Qatar"], ["China","United States"])
+dataset = st.multiselect("Choose countries you want to explore!",country_map_df["name"].to_list(), ["China","United States","United Kingdom","India","Russian Federation","Australia","Qatar"])
 
 df1 = df
 df1 = df1[df1["Country Name"].isin(dataset)]
@@ -157,14 +159,12 @@ labels = alt.Chart(df1).mark_text(align='left', dx=3).encode(
 
 st.write(line+labels)
 
-# brush = alt.selection_interval
-# st.write
 
 # bar chart
 
 
 st.header("Explore different types of CO2 emission")
-dataset2 = st.multiselect("Choose countries you want to explore!", ["China","United States","United Kingdom","India","Russian Federation","Australia","Qatar"], ["China","United States"], key="bar")
+dataset2 = st.multiselect("Choose countries you want to explore!", country_map_df["name"].to_list(), ["China","United States","United Kingdom","India","Russian Federation","Australia","Qatar"], key="bar")
 # tfilter = st.slider("Year", 1990, 2011, 1990)
 
 slider2 = alt.binding_range(min=1990, max=2011, step=1)
@@ -179,18 +179,56 @@ df2 = df2[df2['Year'] <= 2011]
 df2 = df2[df2['Year'] >= 1990]
 df2 = df2[df2['CO2 emissions (kt)'] >0]
 
-df2 = df2.melt(id_vars=["Country Name", "Year"],
+df2 = df2.melt(id_vars=["Country Name", "Year", "CO2 emissions (kt)"],
                value_vars=["solid fuel", "liquid fuel", "gaseous fuel"],
                var_name="type",
-               value_name="CO2 emissions (kt)")
+               value_name="CO2 emissions from different consumptions (kt)")
 
+# line = alt.Chart(df2).mark_area().encode(
+#     alt.X("Country Name"),
+#     alt.Y("CO2 emissions (kt):Q", stack="normalize"),
+#     color="source:N",
+# )
+
+picked = alt.selection_single(on="mouseover")
+
+circle = alt.Chart(df2).mark_circle().encode(
+    x='Year:O',
+    y='Country Name:O',
+    size='CO2 emissions (kt):Q',
+    color='CO2 emissions (kt):Q',
+).properties(
+    width=700,
+    height=300,
+)
+
+picked_interval = alt.selection_interval(encodings=["x"])
+st.write(circle.encode(color = alt.condition(picked,"CO2 emissions (kt):Q",alt.value("lightgray")))
+         .add_selection(picked) & alt.Chart(df2).mark_bar().encode(
+    # alt.Column('Year'),
+    alt.X("CO2 emissions from different consumptions (kt)"),
+    alt.Y('Country Name'),
+    alt.Color('type'),
+).properties(
+    width=700,
+    height=300,
+))
+
+
+# picked = alt.selection_single(fields=["Species","Island"])
+# picked_multi = alt.selection_multi()
+# picked_interval = alt.selection_interval(encodings=["x"])
+# st.write(circle)
 
 bar = alt.Chart(df2).mark_bar().encode(
     # alt.Column('Year'),
-    alt.X("CO2 emissions (kt)"),
+    alt.X("CO2 emissions from different consumptions (kt)"),
     alt.Y('Country Name'),
     alt.Color('type'),
-).properties(width=800).add_selection(select_year2)\
+).properties(
+    width=700,
+    height=300,
+).add_selection(select_year2)\
     .transform_filter(select_year2)
 
 st.write(bar)
