@@ -16,6 +16,11 @@ TODO: **A rationale for your design decisions.** How did you choose your particu
 Since the first part of our project is to provide a global view of the total CO2 emissions, we chose to use a world map with both color and size encodings and a year slide bar. This could give the users a clear overview of the worldwide CO2 total emissions and emissions per capita overtime. Moreover, by adding bar charts connected to the world map, the users can select multiple countries from the map that they're especially interested and compare their CO2 emissions throughout the two decades.
 
 The second part is to guide the users to explore certain countries' sources of CO2 emissions overtime. Therefore, we designed a scatter plot with color and size encodings to show each country's CO2 emissions overtime. The users can select as many countries as they're interested from the multiple selection bar and the countries would be added to the plot automatically. A bar chart showing the percentage of each CO2 emissions sources is connected to the scatter plot. By enabling interval selection on years on the scatter plot, the users can see the change of each country's CO2 emissions sources overtime. 
+
+
 ## Development
 
 TODO: **An overview of your development process.** Describe how the work was split among the team members. Include a commentary on the development process, including answers to the following questions: Roughly how much time did you spend developing your application (in people-hours)? What aspects took the most time?
+
+
+Our project has three sections, each of us is responsible for one section and then collaborates on the last section. Each of us spent about 30 hours on this project, including topic brainstorming, project design, plot development and weekly meetups. The aspects that took the most time are choosing the appropriate types of plots according to our goal and building interactive world map. The original data from world bank isn't sufficient to build an interactive world map, therefore we searched for trustable datasets on coordinates of each country and combine all the datasets with the built-in map in vega datasets.  

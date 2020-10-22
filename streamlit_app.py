@@ -45,7 +45,7 @@ def preprocess_data(df):
     df = df[df['Year'] <= 2011]
     df = df[df['Year'] > 1990]
     df = df[df['CO2 emissions (kt)'] > 0]
-    df = df[df["Population growth (annual %)"] >= 0]
+    # df = df[df["Population growth (annual %)"] >= 0]
     return df
 
 
