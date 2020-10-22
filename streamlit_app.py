@@ -7,7 +7,6 @@ import json
 
 st.title("Let's analyze some CO2 emission data :)")
 
-
 @st.cache  # add caching so we load the data only once
 def load_data():
     climate_url = "https://raw.githubusercontent.com/ZeningQu/World-Bank-Data-by-Indicators/master/climate-change/climate-change.csv"
@@ -50,17 +49,15 @@ def preprocess_data(df):
     return df
 
 
-def world_map():
+def world_map(highlight):
     slider = alt.binding_range(min=1991, max=2011, step=1)
     select_year = alt.selection_single(name="Year", fields=['Year'],
                                        bind=slider, init={'Year': 2011})
 
-    highlight = alt.selection_single(on='mouseover', fields=['id'], empty='all')
-
     map = alt.Chart(df).mark_geoshape(
         stroke='#aaa', strokeWidth=0.25
     ).encode(
-        color=alt.condition(highlight, 'CO2 emissions (kt):Q', alt.value('lightgrey')),
+        color=alt.condition(highlight, 'CO2 emissions (kt):Q', alt.value('lightgrey'), scale=alt.Scale(scheme='redyellowblue', reverse=True)),
         tooltip=["Country Name", "CO2 emissions (kt)", "CO2 emissions per capita"]
     ).transform_lookup(
         lookup='Country Name',
@@ -79,9 +76,9 @@ def world_map():
     ).add_selection(highlight)
 
     percapita = alt.Chart(df).mark_circle(
-        opacity=0.35,
+        opacity=0.4 ,
     ).encode(
-        size=alt.Size('CO2 emissions per capita:Q', scale=alt.Scale(range=[10, 1500])),
+        size=alt.Size('CO2 emissions per capita:Q', scale=alt.Scale(range=[10, 2000])),
         color=alt.condition(highlight, alt.value('red'), alt.value('lightgrey')),
         longitude='Longitude (average):Q',
         latitude='Latitude (average):Q'
@@ -126,17 +123,17 @@ def process_data(df):
     return df2.melt(id_vars=["Country Name", "Year", "CO2 emissions (kt)", "CO2 emissions per capita"],
                     value_vars=["solid fuel % of total", "liquid fuel % of total", "gaseous fuel % of total"],
                     var_name="type",
-                    value_name="CO2 emissions from different consumptions (kt)")
+                    value_name="CO2 emissions from different consumptions (%)")
 
 
 def scatter_plot():
     point = alt.Chart(df2).mark_circle().encode(
         x=alt.X('Year:O', title="Year"),
-        y=alt.Y('CO2 emissions (kt)', title='CO2 emissions (kt)'),
+        y=alt.Y('CO2 emissions (kt)', title='Total CO2 emissions (kt)', scale=alt.Scale(zero=False, padding=1)),
         # color = alt.Color('Country Name:N',scale=alt.Scale(domain=dataset,type='ordinal'))
         # color = alt.Color('CO2 emissions (kt):Q')
         color=alt.condition(picked_interval, "CO2 emissions (kt):Q", alt.value("lightgray"),
-                            scale=alt.Scale(scheme='redblue', reverse=True), title="CO2 emissions (kt)")
+                            scale=alt.Scale(scheme='redyellowblue', reverse=True), title="Total CO2 emissions (kt)")
         , size=alt.Size('CO2 emissions per capita:Q',
                         scale=alt.Scale(range=[100, 500]))
         , tooltip=["Country Name", "CO2 emissions (kt)", "CO2 emissions per capita", "Year"]
@@ -151,7 +148,7 @@ def scatter_plot():
         alt.Y('CO2 emissions (kt)', aggregate={'argmax': 'Year'}),
         alt.Text('Country Name'),
         alt.Color('CO2 emissions (kt):Q', aggregate={'argmax': 'Year'},
-                  scale=alt.Scale(scheme='redblue', reverse=True)),
+                  scale=alt.Scale(scheme='redyellowblue', reverse=True)),
         size=alt.value(17)
     ).properties(title='CO2 total emission and emission per capita', width=600)
 
@@ -161,7 +158,7 @@ def scatter_plot():
 
 def shape_plot():
     shape = alt.Chart(df2).mark_point().encode(
-        alt.X('sum(CO2 emissions (kt)):Q'),
+        alt.X('mean(CO2 emissions (kt)):Q'),
         alt.Y('mean(CO2 emissions per capita):Q'),
         color=alt.Color('Country Name:N', scale=alt.Scale(scheme="tableau10")),
         shape=alt.Shape('Country Name:N', legend=None),
@@ -184,50 +181,70 @@ def shape_plot():
     return shapes
 
 
-def world_map_for_factors():
-    slider = alt.binding_range(min=1991, max=2011, step=1)
-    select_year = alt.selection_single(name="Year", fields=['Year'],
-                                       bind=slider, init={'Year': 2011})
-    dataset = st.multiselect("Choose factors to compare!",
-                             ["CO2 emissions per GDP", "CO2 emissions (kt)",
-                              "Forest area (% of land area)","Marine protected areas (% of territorial waters)","Population growth (annual %)","Renewable electricity output % of total"],
-                             ["CO2 emissions (kt)","CO2 emissions per GDP","Renewable electricity output % of total"])
 
-    highlight = alt.selection_single(on='mouseover', fields=['id'], empty='all')
+def world_map_for_factors(highlight, dataset, select_year):
 
-    map = alt.Chart(df).mark_geoshape(
-        stroke='#aaa', strokeWidth=0.25
-    ).encode(
-        # color=alt.condition(highlight,alt.repeat('row'), alt.value('lightgrey') ),
-        alt.Color(alt.repeat('row'), type='quantitative',scale=alt.Scale(scheme="redblue",reverse=True)),
-        tooltip=["Country Name"] + dataset
-    ).transform_lookup(
-        lookup='Country Name',
-        from_=alt.LookupData(
-            "https://raw.githubusercontent.com/KoGor/Map-Icons-Generator/master/data/world-110m-country-names.tsv",
-            'name', ['id', "name"])
-    ).transform_lookup(
-        lookup='id',
-        from_=alt.LookupData(countries, 'id', fields=["id", "type", "properties", "geometry"])
-    ).project(
-        type="equirectangular"
+    cols=alt.hconcat()
+    for val in dataset:
+        map = alt.Chart(df).mark_geoshape(
+            stroke='#aaa', strokeWidth=0.25
+        ).encode(
+            x = alt.X("Country Name"),
+            color=alt.condition(highlight, val, alt.value('lightgrey'), scale=alt.Scale(scheme='yelloworangered')),
+            tooltip=["Country Name"] + dataset
+        ).transform_lookup(
+            lookup='Country Name',
+            from_=alt.LookupData(
+                "https://raw.githubusercontent.com/KoGor/Map-Icons-Generator/master/data/world-110m-country-names.tsv",
+                'name', ['id', "name"])
+        ).transform_lookup(
+            lookup='id',
+            from_=alt.LookupData(countries, 'id', fields=["id", "type", "properties", "geometry"])
+        ).project(
+            type="equirectangular"
+        ).properties(
+            width=500,
+            height=200
+        ).add_selection(select_year, highlight) \
+            .transform_filter(select_year)
+
+        cols &= map
+    return cols.resolve_scale(color='independent')
+
+def total_trend(highlight):
+    total = alt.Chart(df).mark_bar().encode(
+        alt.Y('Year:N', title="Year"),
+        alt.X('CO2 emissions (kt)', title='Total CO2 emissions (kt)'),
+        color=alt.Color('Country Name', scale=alt.Scale(scheme="set3"), title='type'),
+        tooltip=["Country Name", 'CO2 emissions (kt)']
     ).properties(
-        width=900,
-        height=300
-    ).repeat(
-        row=dataset
-    ).resolve_scale(
-        color='independent'
-    ).add_selection(select_year) \
-        .transform_filter(select_year)
-        # .add_selection(highlight)
-    return map
+        width=600,
+        height=300,
+        title='Total CO2 emissions trend'
+    ).transform_filter(highlight)
+    return total
+
+def percapita_trend(highlight):
+    total = alt.Chart(df).mark_bar().encode(
+        alt.Y('Year:N', title="Year"),
+        alt.X('CO2 emissions per capita', title='CO2 emissions per capita (kt)'),
+        color=alt.Color('Country Name', scale=alt.Scale(scheme="set3"), title='type'),
+        tooltip=["Country Name", 'CO2 emissions per capita']
+    ).properties(
+        width=600,
+        height=300,
+        title='CO2 emissions per capita trend'
+    ).transform_filter(highlight)
+    return total
 
 ################# main plots ############
 df = preprocess_data(df)
 
 st.header("Explore the worldwide CO2 emissions trend!")
-st.write(world_map())
+highlight1 = alt.selection_multi(on='mouseover', fields=['Country Name'], empty='all')
+st.write((world_map(highlight1) & alt.hconcat(total_trend(highlight1), percapita_trend(highlight1))).resolve_scale(
+    y='independent'
+))
 next_block()
 
 st.header("CO2 emissions from different consumptions")
@@ -243,12 +260,12 @@ shapes = shape_plot()
 
 concat = alt.vconcat(
      alt.Chart(df2).mark_bar().encode(
-        alt.X("CO2 emissions from different consumptions (kt)"),
+        alt.X("mean(CO2 emissions from different consumptions (%))"),
         alt.Y('Country Name'),
         alt.Color('type', scale=alt.Scale(scheme="tableau10"), title='type'),
     ).properties(
         width=300,
-        height=200,
+        height=00,
         title='CO2 emissions from different consumptions'
     ).transform_filter(picked_interval),shapes.transform_filter(picked_interval)
 ).resolve_scale(
@@ -266,21 +283,25 @@ st.write(vconcat)
 next_block()
 
 st.header("Factors that may affect CO2 emissions")
-st.write(world_map_for_factors())
+slider = alt.binding_range(min=1991, max=2011, step=1)
+select_year = alt.selection_single(name="Year", fields=['Year'],
+                                       bind=slider, init={'Year': 2011})
+highlight = alt.selection_single(on='mouseover', fields=['Country Name'], empty='all') #init={"Country Name": "United States"})
+
+dataset2 = st.multiselect("Choose factors to compare!",
+                             ["CO2 emissions per GDP", "CO2 emissions (kt)",
+                              "Forest area (% of land area)","Marine protected areas (% of territorial waters)","Population growth (annual %)","Renewable electricity output % of total"],
+                             ["CO2 emissions (kt)","CO2 emissions per GDP","Renewable electricity output % of total"])
 
 
-# circle = alt.Chart(df2).mark_circle(
-#     opacity=0.5,
-#     stroke='black',
-#     strokeWidth=1
-# ).encode(
-#     alt.Size('CO2 emissions (metric tons per capita):Q', scale=alt.Scale(range=[50, 2000])),
-#     alt.Color('CO2 emissions (kt):Q'),
-#     x='Year:O',
-#     y='Country Name:O',
-#     tooltip=['Country Name', "Year", 'CO2 emissions (metric tons per capita)', 'CO2 emissions (kt):Q']
-# ).properties(
-#     width=700,
-#     height=350,
-#     title='CO2 total emission and emission per capita overtime'
-# )
+st.write(alt.hconcat(world_map_for_factors(highlight, dataset2, select_year), alt.Chart(df).mark_circle().encode(
+        alt.X(alt.repeat("column"), type='quantitative'),
+        alt.Y(alt.repeat("row"), type='quantitative'),
+        color='Country Name:N'
+    ).properties(
+        width=150,
+        height=150
+    ).repeat(
+        row=dataset2,
+        column=dataset2,
+    ).transform_filter(select_year)))
