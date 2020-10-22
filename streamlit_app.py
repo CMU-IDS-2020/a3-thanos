@@ -121,30 +121,31 @@ def process_data(df,dataset):
                     value_name="CO2 emissions from different consumptions (%)")
 
 
-def scatter_plot(df,picked_interval):
+def scatter_plot(df,picked_interval, single_select):
     point = alt.Chart(df).mark_circle().encode(
         x=alt.X('Year:O', title="Year"),
         y=alt.Y('CO2 emissions (kt)', title='Total CO2 emissions (kt)', scale=alt.Scale(zero=False, padding=1)),
         # color = alt.Color('Country Name:N',scale=alt.Scale(domain=dataset,type='ordinal'))
         # color = alt.Color('CO2 emissions (kt):Q')
-        color=alt.condition(picked_interval, "CO2 emissions (kt):Q", alt.value("lightgray"),
+        color=alt.condition(picked_interval|single_select, "CO2 emissions (kt):Q", alt.value("lightgray"),
                             scale=alt.Scale(scheme='redyellowblue', reverse=True), title="Total CO2 emissions (kt)")
         , size=alt.Size('CO2 emissions per capita:Q',
-                        scale=alt.Scale(range=[200, 1000]))
-        # , tooltip=["Country Name", "CO2 emissions (kt)", "CO2 emissions per capita", "Year"]
+                        scale=alt.Scale(range=[300, 1000])),
+        tooltip=["Country Name", "CO2 emissions (kt)", "CO2 emissions per capita", "Year"]
+    ).add_selection(
+        single_select
     )
 
     line = alt.Chart(df).mark_line(
-        strokeWidth=0.7
+        # strokeWidth=0.7
     ).encode(
         x=alt.X('Year:N', title="Year"),
         y=alt.Y('CO2 emissions (kt):Q', title='Total CO2 emissions (kt)'),
-        color = alt.condition(picked_interval, "Country Name", alt.value("lightgray"), legend=None),
+        color = alt.condition(picked_interval | single_select, "Country Name", alt.value("lightgray"), legend=None),
         # color = alt.Color('CO2 emissions (kt):Q')
         # color=alt.condition(picked_interval, "CO2 emissions (kt):Q", alt.value("lightgray"),
         #                     scale=alt.Scale(scheme='redyellowblue', reverse=True), title="Total CO2 emissions (kt)")
-        # , size=alt.Size('CO2 emissions per capita:Q',
-        #                 scale=alt.Scale(range=[100, 500]))
+        size=alt.condition(~(picked_interval | single_select), alt.value(1), alt.value(3)),
         tooltip=["Country Name", "CO2 emissions (kt)", "CO2 emissions per capita", "Year"]
     ).properties(
         width=650,
@@ -158,20 +159,20 @@ def scatter_plot(df,picked_interval):
         alt.Text('Country Name'),
         alt.Color('CO2 emissions (kt):Q', aggregate={'argmax': 'Year'},
                   scale=alt.Scale(scheme='redyellowblue', reverse=True), legend=None),
-        size=alt.value(17)
+        size=alt.condition(~(single_select), alt.value(17), alt.value(20)),
     ).properties(title='CO2 total emission and emission per capita', width=600)
 
     points = line+point+labels
     return points
 
 
-def shape_plot(df):
+def shape_plot(df, single_select):
     shape = alt.Chart(df).mark_circle(
         opacity=0.35
     ).encode(
         alt.X('CO2 emissions (kt):Q'),
         alt.Y('CO2 emissions per capita:Q'),
-        color=alt.Color('Country Name:N', scale=alt.Scale(scheme="tableau10")),
+        color=alt.condition(single_select, 'Country Name:N', alt.value('lightgrey'), scale=alt.Scale(scheme="tableau10")),
         shape=alt.Shape('Country Name:N', legend=None),
         size=alt.value(250),
         # size=alt.Size('CO2 emissions per capita:Q',
@@ -281,7 +282,7 @@ def step2_wordwide_trend():
     st.header("Explore the worldwide CO2 emissions trend!")
     st.write("Tips:")
     st.write(
-        "1. Put your mouse on the country for detail information. The stacked bar plots below show total CO2 emissions and emissions per capita for all years.")
+        "1. Put your mouse on the country for detailed information. The stacked bar plots below show total CO2 emissions and emissions per capita for all years.")
     st.write("2. Press shift and select multiple countries for comparison.")
     st.write("3. Try to play with the year slide bar below!")
     highlight1 = alt.selection_multi(on='click', fields=['Country Name'], empty='all')
@@ -298,15 +299,17 @@ def step3_co2_emissions_sources():
     st.write("Tips:")
     st.write("1. Add countries to the plot and compare!")
     st.write(
-        "2. Select year interval on the left plot and explore the change of CO2 emissions sources overtime for each country!")
+        "2. Hover your mouse over points on the left plot for detailed information and corresponding CO2 emissions sources.")
+    st.write(
+        "3. Select year interval on the left plot and explore the change of CO2 emissions sources overtime for each country!")
 
     dataset = st.multiselect("Choose countries you want to explore!", country_map_df["name"].to_list(),
                              ["China", "United States", "India", "Qatar"])
     df2 = process_data(df,dataset)
     picked_interval = alt.selection_interval(encodings=["x"])
-
-    points = scatter_plot(df2,picked_interval)
-    shapes = shape_plot(df2)
+    single_select = alt.selection(type="single",on='mouseover', fields=['Country Name'])
+    points = scatter_plot(df2,picked_interval, single_select)
+    shapes = shape_plot(df2, single_select)
 
     concat = alt.vconcat(
         alt.Chart(df2).mark_bar(
@@ -314,7 +317,9 @@ def step3_co2_emissions_sources():
         ).encode(
             alt.X("mean(CO2 emissions from different consumptions (%))"),
             alt.Y('Country Name', title=""),
-            alt.Color('type', scale=alt.Scale(scheme="tableau10"), title='type'),
+            color = alt.condition(single_select, 'type', alt.value('lightgrey'),scale=alt.Scale(scheme="tableau10"), title="type"),
+            # color = single_select)
+            # alt.Color('type', scale=alt.Scale(scheme="tableau10"), title='type'),
         ).properties(
             width=300,
             height=150,
