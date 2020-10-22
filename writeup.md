@@ -1,6 +1,8 @@
 # Explore Worldwide CO2 Emissions
 
-![A screenshot of your application. Could be a GIF.](project_screenshot.png)
+![A screenshot of your application. Could be a GIF.](Screenshot.gif)
+
+Abstract: This project aims to let users explore worldwide CO2 emission trends and factors that influence CO2 emissions. We break exploration into 4 steps: 1) what is CO2 emissions, 2) Worldwide CO2 emissions, 3) CO2 emissions sources, 4) CO2 emission related factors. Following our interactive designs in these 4 steps, users will be able to gain a better understanding of CO2 emissions. 
 
 ## Project Goals
 The goal of our project is to enable the users to explore the worldwide trend of carbon dioxide emissions from 1990 to 2011 and identify sources of CO2 emission and possible factors that may cause some countries to have specific trends. By comparing different countries' total CO2 emissions and emissions per capita, the users are expected to identify the countries that contribute the most to CO2 emissions.
