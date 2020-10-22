@@ -49,7 +49,7 @@ def preprocess_data(df):
     return df
 
 
-def world_map(highlight):
+def world_map(highlight, highlight2):
     slider = alt.binding_range(min=1991, max=2011, step=1)
     select_year = alt.selection_single(name="Year", fields=['Year'],
                                        bind=slider, init={'Year': 2011})
@@ -57,7 +57,7 @@ def world_map(highlight):
     map = alt.Chart(df).mark_geoshape(
         stroke='#aaa', strokeWidth=0.25
     ).encode(
-        color=alt.condition(highlight, 'CO2 emissions (kt):Q', alt.value('lightgrey'), scale=alt.Scale(scheme='redyellowblue', reverse=True)),
+        color=alt.condition(highlight2 | highlight, 'CO2 emissions (kt):Q', alt.value('lightgrey'), scale=alt.Scale(scheme='redyellowblue', reverse=True)),
         tooltip=["Country Name", "CO2 emissions (kt)", "CO2 emissions per capita"]
     ).transform_lookup(
         lookup='Country Name',
@@ -73,13 +73,13 @@ def world_map(highlight):
         width=1200,
         height=650,
         title='worldwide CO2 total emissions and emissions per capita'
-    ).add_selection(highlight)
+    ).add_selection(highlight, highlight2)
 
     percapita = alt.Chart(df).mark_circle(
         opacity=0.4 ,
     ).encode(
         size=alt.Size('CO2 emissions per capita:Q', scale=alt.Scale(range=[10, 2000])),
-        color=alt.condition(highlight, alt.value('red'), alt.value('lightgrey')),
+        color=alt.condition(highlight2 | highlight, alt.value('red'), alt.value('lightgrey')),
         longitude='Longitude (average):Q',
         latitude='Latitude (average):Q'
     ).transform_lookup(
@@ -211,38 +211,50 @@ def world_map_for_factors(highlight, dataset, select_year):
         cols &= map
     return cols.resolve_scale(color='independent')
 
-def total_trend(highlight):
+def total_trend(highlight, highlight2):
     total = alt.Chart(df).mark_bar().encode(
-        alt.Y('Year:N', title="Year"),
-        alt.X('CO2 emissions (kt)', title='Total CO2 emissions (kt)'),
+        alt.X('Year:N', title="Year"),
+        alt.Y('CO2 emissions (kt)', title='Total CO2 emissions (kt)'),
         color=alt.Color('Country Name', scale=alt.Scale(scheme="set3"), title='type'),
+        order=alt.Order(
+            # Sort the segments of the bars by this field
+            'CO2 emissions (kt)',
+            sort='ascending'
+        ),
         tooltip=["Country Name", 'CO2 emissions (kt)']
     ).properties(
         width=600,
         height=300,
-        title='Total CO2 emissions trend'
-    ).transform_filter(highlight)
+        title='Total CO2 emissions world trend'
+    ).transform_filter(highlight | highlight2)
     return total
 
-def percapita_trend(highlight):
+def percapita_trend(highlight, highlight2):
     total = alt.Chart(df).mark_bar().encode(
-        alt.Y('Year:N', title="Year"),
-        alt.X('CO2 emissions per capita', title='CO2 emissions per capita (kt)'),
+        alt.X('Year:N', title="Year"),
+        alt.Y('CO2 emissions per capita', title='CO2 emissions per capita (kt)'),
         color=alt.Color('Country Name', scale=alt.Scale(scheme="set3"), title='type'),
+        order=alt.Order(
+            # Sort the segments of the bars by this field
+            'CO2 emissions per capita',
+            sort='ascending'
+        ),
         tooltip=["Country Name", 'CO2 emissions per capita']
     ).properties(
         width=600,
         height=300,
-        title='CO2 emissions per capita trend'
-    ).transform_filter(highlight)
+        title='CO2 emissions per capita world trend'
+    ).transform_filter(highlight | highlight2)
     return total
 
 ################# main plots ############
 df = preprocess_data(df)
 
 st.header("Explore the worldwide CO2 emissions trend!")
-highlight1 = alt.selection_multi(on='mouseover', fields=['Country Name'], empty='all')
-st.write((world_map(highlight1) & alt.hconcat(total_trend(highlight1), percapita_trend(highlight1))).resolve_scale(
+
+highlight1 = alt.selection_multi(on='click', fields=['Country Name'], empty='all')
+highlight2 = alt.selection_single(on='mouseover', fields=['Country Name'], empty='all')
+st.write((world_map(highlight1, highlight2) & alt.hconcat(total_trend(highlight1, highlight2), percapita_trend(highlight1, highlight2))).resolve_scale(
     y='independent'
 ))
 next_block()
@@ -286,7 +298,7 @@ st.header("Factors that may affect CO2 emissions")
 slider = alt.binding_range(min=1991, max=2011, step=1)
 select_year = alt.selection_single(name="Year", fields=['Year'],
                                        bind=slider, init={'Year': 2011})
-highlight = alt.selection_single(on='mouseover', fields=['Country Name'], empty='all') #init={"Country Name": "United States"})
+highlight = alt.selection_single(on='mouseover' or 'click', fields=['Country Name'], empty='all') #init={"Country Name": "United States"})
 
 dataset2 = st.multiselect("Choose factors to compare!",
                              ["CO2 emissions per GDP", "CO2 emissions (kt)",
