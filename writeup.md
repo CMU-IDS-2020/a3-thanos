@@ -1,6 +1,6 @@
 # Explore Worldwide CO2 Emissions
 
-![A screenshot of your application. Could be a GIF.](screenshot.png)
+![A screenshot of your application. Could be a GIF.](project_screenshot.png)
 
 ## Project Goals
 The goal of our project is to enable the users to explore the worldwide trend of carbon dioxide emissions from 1990 to 2011 and identify sources of CO2 emission and possible factors that may cause some countries to have specific trends. By comparing different countries' total CO2 emissions and emissions per capita, the users are expected to identify the countries that contribute the most to CO2 emissions.
