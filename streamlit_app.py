@@ -5,8 +5,8 @@ from vega_datasets import data
 # import geopandas as gpd
 import json
 
-st.title("Let's analyze some CO2 emission data :)")
-
+st.title("Let's analyze some CO2 emission data !")
+MAX_WIDTH = 1000
 @st.cache  # add caching so we load the data only once
 def load_data():
     climate_url = "https://raw.githubusercontent.com/ZeningQu/World-Bank-Data-by-Indicators/master/climate-change/climate-change.csv"
@@ -29,9 +29,6 @@ country_map_df = pd.read_table(
     "https://raw.githubusercontent.com/KoGor/Map-Icons-Generator/master/data/world-110m-country-names.tsv")
 countries = alt.topo_feature(data.world_110m.url, 'countries')
 
-if st.checkbox("Show Raw Data"):
-    st.write(df)
-
 alt.data_transformers.disable_max_rows()
 
 
@@ -41,7 +38,8 @@ def preprocess_data(df):
                             "CO2 emissions from solid fuel consumption (% of total)": "solid fuel % of total",
                             "CO2 emissions (metric tons per capita)": "CO2 emissions per capita",
                             "CO2 emissions (kg per PPP $ of GDP)" : "CO2 emissions per GDP",
-                            "Renewable electricity output (% of total electricity output)":"Renewable electricity output % of total"})
+                            "Renewable electricity output (% of total electricity output)":"Renewable electricity output % of total",
+                            "Terrestrial protected areas (% of total land area)": "Terrestrial protected areas % of total"})
     df = df[df['Year'] <= 2011]
     df = df[df['Year'] > 1990]
     df = df[df['CO2 emissions (kt)'] > 0]
@@ -81,7 +79,8 @@ def world_map(highlight, highlight2):
         size=alt.Size('CO2 emissions per capita:Q', scale=alt.Scale(range=[10, 3000])),
         color=alt.condition(highlight2 | highlight, alt.value('red'), alt.value('lightgrey')),
         longitude='Longitude (average):Q',
-        latitude='Latitude (average):Q'
+        latitude='Latitude (average):Q',
+    tooltip = ["Country Name", "CO2 emissions (kt)", "CO2 emissions per capita"]
     ).transform_lookup(
         lookup='Country Name',
         from_=alt.LookupData(
@@ -108,11 +107,9 @@ def next_block():
     st.write("\n")
     st.write("\n")
     st.write("\n")
-    st.write("\n")
-    st.write("\n")
 
 
-def process_data(df):
+def process_data(df,dataset):
     df2 = df  # [["Country Name", "Year", "CO2 emissions (kt)", "CO2 emissions from gaseous fuel consumption (kt)", "CO2 emissions from liquid fuel consumption (kt)", "CO2 emissions from solid fuel consumption (kt)"]]
 
     df2 = df2[df2["Country Name"].isin(dataset)]
@@ -124,8 +121,8 @@ def process_data(df):
                     value_name="CO2 emissions from different consumptions (%)")
 
 
-def scatter_plot():
-    point = alt.Chart(df2).mark_circle().encode(
+def scatter_plot(df,picked_interval):
+    point = alt.Chart(df).mark_circle().encode(
         x=alt.X('Year:O', title="Year"),
         y=alt.Y('CO2 emissions (kt)', title='Total CO2 emissions (kt)', scale=alt.Scale(zero=False, padding=1)),
         # color = alt.Color('Country Name:N',scale=alt.Scale(domain=dataset,type='ordinal'))
@@ -137,7 +134,7 @@ def scatter_plot():
         # , tooltip=["Country Name", "CO2 emissions (kt)", "CO2 emissions per capita", "Year"]
     )
 
-    line = alt.Chart(df2).mark_line(
+    line = alt.Chart(df).mark_line(
         strokeWidth=0.7
     ).encode(
         x=alt.X('Year:N', title="Year"),
@@ -155,7 +152,7 @@ def scatter_plot():
         title='CO2 total emission and emission per capita overtime'
     )
 
-    labels = alt.Chart(df2).mark_text(align='center', dx=-20, dy=-25).encode(
+    labels = alt.Chart(df).mark_text(align='center', dx=-20, dy=-25).encode(
         alt.X('Year:O', aggregate='max'),
         alt.Y('CO2 emissions (kt)', aggregate={'argmax': 'Year'}),
         alt.Text('Country Name'),
@@ -168,8 +165,8 @@ def scatter_plot():
     return points
 
 
-def shape_plot():
-    shape = alt.Chart(df2).mark_circle(
+def shape_plot(df):
+    shape = alt.Chart(df).mark_circle(
         opacity=0.35
     ).encode(
         alt.X('CO2 emissions (kt):Q'),
@@ -264,71 +261,104 @@ def percapita_trend(highlight, highlight2):
     ).transform_filter(highlight | highlight2)
     return total
 
-################# main plots ############
-df = preprocess_data(df)
 
-st.header("Explore the worldwide CO2 emissions trend!")
+def step1_introduction():
+    st.header("What is CO2 Emissions?")
+    st.write("What is CO2 Emissions? Why is it important? Let's watch a short introduction video from BBC!")
+    st.video("https://www.youtube.com/watch?v=rFw8MopzXdI&ab_channel=BBCNews")
+    next_block()
+    st.header("Dataset Description")
+    st.write('''
+        This dataset comes from [WorldBank]
+        (https://github.com/ZeningQu/World-Bank-Data-by-Indicators) It covers over 174 countries and 50 indicators.
+    ''')
+    if st.checkbox("Show Raw Data"):
+        st.write(df)
 
-highlight1 = alt.selection_multi(on='click', fields=['Country Name'], empty='all')
-highlight2 = alt.selection_single(on='mouseover', fields=['Country Name'], empty='all')
-st.write((world_map(highlight1, highlight2) & alt.hconcat(total_trend(highlight1, highlight2), percapita_trend(highlight1, highlight2))).resolve_scale(
-    y='independent',
-    size='independent'
-))
-next_block()
 
-st.header("CO2 emissions from different consumptions")
-st.write("Add countries and select year interval to explore CO2 emissions over time!")
+def step2_wordwide_trend():
+    # next_block()
+    st.header("Explore the worldwide CO2 emissions trend!")
+    st.write("Tips:")
+    st.write(
+        "1. Put your mouse on the country for detail information. The stacked bar plots below show total CO2 emissions and emissions per capita for all years.")
+    st.write("2. Press shift and select multiple countries for comparison.")
+    st.write("3. Try to play with the year slide bar below!")
+    highlight1 = alt.selection_multi(on='click', fields=['Country Name'], empty='all')
+    highlight2 = alt.selection_single(on='mouseover', fields=['Country Name'], empty='all')
+    st.write((world_map(highlight1, highlight2) & alt.hconcat(total_trend(highlight1, highlight2),
+                                                              percapita_trend(highlight1, highlight2))).resolve_scale(
+        y='independent',
+        size='independent'
+    ))
 
-dataset = st.multiselect("Choose countries you want to explore!", country_map_df["name"].to_list(),
-                         ["China", "United States", "India", "Qatar"])
-df2 = process_data(df)
-picked_interval = alt.selection_interval(encodings=["x"])
+def step3_co2_emissions_sources():
+    # next_block()
+    st.header("CO2 emissions from different consumptions")
+    st.write("Tips:")
+    st.write("1. Add countries to the plot and compare!")
+    st.write(
+        "2. Select year interval on the left plot and explore the change of CO2 emissions sources overtime for each country!")
 
-points = scatter_plot()
-shapes = shape_plot()
+    dataset = st.multiselect("Choose countries you want to explore!", country_map_df["name"].to_list(),
+                             ["China", "United States", "India", "Qatar"])
+    df2 = process_data(df,dataset)
+    picked_interval = alt.selection_interval(encodings=["x"])
 
-concat = alt.vconcat(
-     alt.Chart(df2).mark_bar(
-        opacity=0.9
-     ).encode(
-        alt.X("mean(CO2 emissions from different consumptions (%))"),
-        alt.Y('Country Name', title=""),
-        alt.Color('type', scale=alt.Scale(scheme="tableau10"), title='type'),
-    ).properties(
-        width=300,
-        height=150,
-        title='CO2 emissions from different consumptions'
-    ).transform_filter(picked_interval),shapes.transform_filter(picked_interval)
-).resolve_scale(
-    color='independent'
-)
+    points = scatter_plot(df2,picked_interval)
+    shapes = shape_plot(df2)
 
-vconcat = alt.hconcat(
-    points.add_selection(picked_interval), concat
-).resolve_scale(
-    color='independent'
-    , size='independent'
-)
+    concat = alt.vconcat(
+        alt.Chart(df2).mark_bar(
+            opacity=0.9
+        ).encode(
+            alt.X("mean(CO2 emissions from different consumptions (%))"),
+            alt.Y('Country Name', title=""),
+            alt.Color('type', scale=alt.Scale(scheme="tableau10"), title='type'),
+        ).properties(
+            width=300,
+            height=150,
+            title='CO2 emissions from different consumptions'
+        ).transform_filter(picked_interval), shapes.transform_filter(picked_interval)
+    ).resolve_scale(
+        color='independent'
+    )
 
-st.write(vconcat)
-next_block()
+    vconcat = alt.hconcat(
+        points.add_selection(picked_interval), concat
+    ).resolve_scale(
+        color='independent'
+        , size='independent'
+    )
 
-st.header("Factors that may affect CO2 emissions")
-slider = alt.binding_range(min=1991, max=2011, step=1)
-select_year = alt.selection_single(name="Year", fields=['Year'],
+    st.write(vconcat)
+
+def step4_related_factors():
+    # next_block()
+    st.header("Factors that may affect CO2 emissions")
+    st.write("Tips:")
+    st.write("1. Add indicators you want to compare with CO2 emissions!")
+    st.write("2. Put your mouse on a country and compare across indicators!")
+    st.write("3. Remember to play with the year slide bar :)")
+
+    slider = alt.binding_range(min=1991, max=2011, step=1)
+    select_year = alt.selection_single(name="Year", fields=['Year'],
                                        bind=slider, init={'Year': 2011})
-highlight = alt.selection_single(on='mouseover', fields=['Country Name'], empty='all') #init={"Country Name": "United States"})
+    highlight = alt.selection_single(on='mouseover', fields=['Country Name'],
+                                     empty='all')  # init={"Country Name": "United States"})
 
-dataset2 = st.multiselect("Choose factors to compare!",
-                             ["CO2 emissions per GDP", "CO2 emissions (kt)", "CO2 emissions per capita",
-                              "Urban population (% of total)",
-                              "Renewable energy consumption (% of total final energy consumption)",
-                              "Forest area (% of land area)","Marine protected areas (% of territorial waters)","Population growth (annual %)","Renewable electricity output % of total"],
-                             ["CO2 emissions (kt)","CO2 emissions per GDP","Renewable electricity output % of total"])
+    dataset2 = st.multiselect("Choose factors to compare!",
+                              ["CO2 emissions per GDP", "CO2 emissions (kt)", "CO2 emissions per capita",
+                               "Urban population (% of total)",
+                               "Renewable energy consumption (% of total final energy consumption)",
+                               "Forest area (% of land area)", "Marine protected areas (% of territorial waters)",
+                               "Population growth (annual %)", "Renewable electricity output % of total",
+                               "Terrestrial protected areas % of total",
+                               "Total greenhouse gas emissions (kt of CO2 equivalent)"],
+                              ["CO2 emissions (kt)", "CO2 emissions per GDP",
+                               "Renewable electricity output % of total"])
 
-
-st.write(alt.hconcat(world_map_for_factors(highlight, dataset2, select_year), alt.Chart(df).mark_point().encode(
+    st.write(alt.hconcat(world_map_for_factors(highlight, dataset2, select_year), alt.Chart(df).mark_point().encode(
         alt.X(alt.repeat("column"), type='quantitative'),
         alt.Y(alt.repeat("row"), type='quantitative'),
         color='Country Name:N',
@@ -339,3 +369,25 @@ st.write(alt.hconcat(world_map_for_factors(highlight, dataset2, select_year), al
         row=dataset2,
         column=dataset2,
     ).transform_filter(select_year).interactive()))
+
+
+################# main plots ############
+
+
+df = preprocess_data(df)
+
+
+st.sidebar.write('Follow the steps below and begin to explore!')
+
+functions = {
+    'Step1: What is CO2 emissions': lambda: step1_introduction(),
+    'Step2: Worldwide CO2 emissions': lambda: step2_wordwide_trend(),
+    'Step3: CO2 emissions sources': lambda: step3_co2_emissions_sources(),
+    'Step4: CO2 emissions related factors': lambda: step4_related_factors()
+}
+menu = st.sidebar.selectbox(
+    "Menu", list(functions.keys())
+)
+functions[menu]()
+
+
