@@ -2,10 +2,8 @@ import streamlit as st
 import pandas as pd
 import altair as alt
 from vega_datasets import data
-# import geopandas as gpd
-import json
 
-st.title("Let's analyze some CO2 emission data !")
+st.title("Let's analyze some CO2 emission data &#x1f30e")
 MAX_WIDTH = 1000
 @st.cache  # add caching so we load the data only once
 def load_data():
@@ -110,7 +108,7 @@ def next_block():
 
 
 def process_data(df,dataset):
-    df2 = df  # [["Country Name", "Year", "CO2 emissions (kt)", "CO2 emissions from gaseous fuel consumption (kt)", "CO2 emissions from liquid fuel consumption (kt)", "CO2 emissions from solid fuel consumption (kt)"]]
+    df2 = df
 
     df2 = df2[df2["Country Name"].isin(dataset)]
 
@@ -175,8 +173,6 @@ def shape_plot(df, single_select):
         color=alt.condition(single_select, 'Country Name:N', alt.value('lightgrey'), scale=alt.Scale(scheme="tableau10")),
         shape=alt.Shape('Country Name:N', legend=None),
         size=alt.value(250),
-        # size=alt.Size('CO2 emissions per capita:Q',
-        #                 scale=alt.Scale(range=[100, 500]), legend=None)
     ).properties(
         width=300,
         height=250,
@@ -264,7 +260,7 @@ def percapita_trend(highlight, highlight2):
 
 
 def step1_introduction():
-    st.header("What is CO2 Emissions?")
+    st.header("Step1: What is CO2 Emissions?")
     st.write("What is CO2 Emissions? Why is it important? Let's watch a short introduction video from BBC!")
     st.video("https://www.youtube.com/watch?v=rFw8MopzXdI&ab_channel=BBCNews")
     next_block()
@@ -279,7 +275,7 @@ def step1_introduction():
 
 def step2_wordwide_trend():
     # next_block()
-    st.header("Explore the worldwide CO2 emissions trend!")
+    st.header("Step2: Explore the worldwide CO2 emissions trend!")
     st.write("Tips:")
     st.write(
         "1. Put your mouse on the country for detailed information. The stacked bar plots below show total CO2 emissions and emissions per capita for all years.")
@@ -295,7 +291,7 @@ def step2_wordwide_trend():
 
 def step3_co2_emissions_sources():
     # next_block()
-    st.header("CO2 emissions from different consumptions")
+    st.header("Step3: CO2 emissions from different consumptions")
     st.write("Tips:")
     st.write("1. Add countries to the plot and compare!")
     st.write(
@@ -340,7 +336,7 @@ def step3_co2_emissions_sources():
 
 def step4_related_factors():
     # next_block()
-    st.header("Factors that may affect CO2 emissions")
+    st.header("Step4: Factors that may affect CO2 emissions")
     st.write("Tips:")
     st.write("1. Add indicators you want to compare with CO2 emissions!")
     st.write("2. Put your mouse on a country and compare across indicators!")
